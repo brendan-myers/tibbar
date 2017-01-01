@@ -58,7 +58,7 @@ tibbar.send('getDatePromise').then(date => {
 
 ### Response format
 **Successful**
-```JSON
+```
 {
 	type: 'response',
 	body: ...
@@ -66,7 +66,7 @@ tibbar.send('getDatePromise').then(date => {
 ```
 
 **Exception**
-```JSON
+```
 {
 	type: 'exception',
 	name: exception name,
