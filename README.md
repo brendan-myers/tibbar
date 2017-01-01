@@ -8,7 +8,6 @@ Things not yet done
 - So, so much
 
 ## Installation
-*In the Tibbar direcory*
 ```
 npm install --save tibbar
 ```
