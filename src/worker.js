@@ -1,9 +1,9 @@
-const amqp = require('amqplib');
-const assert = require('assert');
 const debug = require('debug')('tibbar:worker');
+import assert from 'assert';
+import amqp from 'amqplib';
 
 export default class Worker {
-	constructor () {
+	constructor() {
 		this._queues = {};
 		this._options = {
 			assertQueue: {
@@ -17,7 +17,7 @@ export default class Worker {
 	}
 
 
-	use (name, callback) {
+	use(name, callback) {
 		debug(`Adding queue '${name}'`);
 
 		assert(!this._queues[name], `'${name}'' already exists`);
@@ -27,9 +27,9 @@ export default class Worker {
 	}
 
 
-	connect (url) {
+	connect(url) {
 		return amqp.connect(url).then(conn => {
-			for (let q in this._queues) {
+			for (let q in this._queues) {		// todo use Promise.all
 				const queue = this._queues[q];
 
 				conn.createChannel().then(ch => {
@@ -39,22 +39,30 @@ export default class Worker {
 					const cb = (msg) => {
 						debug(`[${q}] Receive: ${JSON.stringify(msg)}`);
 
-						if (!msg.properties.replyTo | !msg.properties.correlationId) {
+						if (!msg.properties.replyTo || !msg.properties.correlationId) { // todo should throw an exception
 							debug(`[${q}] Invalid message`);
 							return;
 						}
 
-						const res = queue.callback(msg.content.toString(), ch);
+						try {
+							const res = queue.callback(JSON.parse(msg.content.toString()));
 
-						debug(`[${q}] Respond: ${JSON.stringify(res)}`);
-
-						ch.sendToQueue(
-							msg.properties.replyTo,
-							new Buffer(res),
-							{ correlationId: msg.properties.correlationId }
-						);
-
-						ch.ack(msg);						
+							if ('function' === typeof res.then) {	// if res is a Promise
+								res.then(p => {
+									debug(`[${q}] Respond: ${JSON.stringify(p)}`);
+									sendResponse(p, ch, msg);
+								}).catch(ex => {
+									debug(`[${q}] Exception: ${JSON.stringify(ex)}`);
+									sendResponse(null, ch, msg, ex);
+								});
+							} else {
+								debug(`[${q}] Respond: ${JSON.stringify(res)}`);
+								sendResponse(res, ch, msg);
+							}
+						} catch (ex) {
+							debug(`[${q}] Exception: ${JSON.stringify(ex)}`);
+							sendResponse(null, ch, msg, ex);
+						}
 					};
 
 					ch.consume(q, cb);
@@ -63,3 +71,28 @@ export default class Worker {
 		});
 	}
 }
+
+function sendResponse(payload, channel, msg, exception) {
+	let buffer;
+
+	if (!exception) {
+		buffer = new Buffer(JSON.stringify({
+			type: 'response',
+			body: payload
+		}));
+	} else {
+		buffer = new Buffer(JSON.stringify({
+			type: 'exception',
+			name: exception.constructor.name,
+			body: exception
+		}));
+	}
+
+	channel.sendToQueue(
+		/* channel */ msg.properties.replyTo,
+		/* payload */ buffer,
+		/* options */ { correlationId: msg.properties.correlationId },
+	);
+
+	channel.ack(msg);
+};

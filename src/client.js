@@ -1,7 +1,7 @@
-const amqp = require('amqplib');
-const assert = require('assert');
 const debug = require('debug')('tibbar:client');
-const os = require('os');
+import amqp from 'amqplib';
+import assert from 'assert';
+import os from 'os';
 
 export default class Client {
 	constructor(url) {
@@ -19,7 +19,7 @@ export default class Client {
 
 
   send(endpoint, params, timeout) {  // todo: implement timeout
-  	params = !params ? '' : params;
+  	params = !params ? '{}' : JSON.stringify(params);
   	debug(`Calling ${endpoint}(${params})`);
   	
   	const promise = new Promise((resolve, reject) => {
@@ -30,7 +30,7 @@ export default class Client {
 	  		return conn.createChannel();
 	  	}).then(c => {
 	  		ch = c;
-				return ch.assertQueue('', { exclusive: true });
+				return ch.assertQueue('', this._options.assertQueue);
 			}).then((q) => {
 				const correlationId = this.generateUuid();
 
@@ -40,7 +40,13 @@ export default class Client {
 
 						conn.close();
 
-						resolve(msg.content.toString());
+						const res = JSON.parse(msg.content.toString());
+
+						if (res.type == 'exception') {
+							reject(res);
+						} else {
+							resolve(res.body);
+						}
 					}
 				};
 

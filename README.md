@@ -4,7 +4,8 @@ A very simple RabbitMQ microservice framework.
 Things not yet done
 
 - Timeout on requests
-- Handling of passing data other than strings
+- Better error handling
+- Some code tidying
 - So, so much
 
 ## Installation
@@ -19,12 +20,17 @@ const tibbar = require('tibbar').worker();
 
 // no parameters
 tibbar.use('getDate', () => {
-  return Date.now().toString();
+  return Date.now();
 });
 
 // with parameters
-tibbar.use('double', (number) => {
-  return (number * 2).toString();
+tibbar.use('double', (payload) => {
+  return (payload.value * 2);
+});
+
+// using promises
+tibbar.use('getDatePromise', () => {
+	return Promise.resolve(Date.now());
 });
 
 tibbar.connect('amqp://localhost');
@@ -37,16 +43,33 @@ const tibbar = require('tibbar').client('amqp://localhost');
 // no parameters
 tibbar.send('getDate').then(date => {
   console.log(date);
-}).catch(ex => {
-  console.log(`Ex: ${ex}`);
 });
 
 // with parameters
-tibbar.send('double', '5').then(double => {
-  console.log(double);
-}).catch(ex => {
-  console.log(`Ex: ${ex}`);
+tibbar.send('double', { value: 5 }).then(result => {
+  console.log(result);
+});
+
+// using promises
+tibbar.send('getDatePromise').then(date => {
+  console.log(date);
 });
 ```
 
-##
+### Response format
+**Successful**
+```JSON
+{
+	type: 'response',
+	body: ...
+}
+```
+
+**Exception**
+```JSON
+{
+	type: 'exception',
+	name: exception name,
+	body: exception message
+}
+```
