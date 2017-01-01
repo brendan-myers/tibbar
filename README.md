@@ -31,7 +31,7 @@ tibbar.use('getDate', () => {
 
 // with parameters
 tibbar.use('double', (number) => {
-  return number * 2;
+  return (number * 2).toString();
 });
 
 tibbar.connect('amqp://localhost');
@@ -49,7 +49,7 @@ tibbar.send('getDate').then(date => {
 });
 
 // with parameters
-tibbar.send('double', 5).then(double => {
+tibbar.send('double', '5').then(double => {
   console.log(double);
 }).catch(ex => {
   console.log(`Ex: ${ex}`);
