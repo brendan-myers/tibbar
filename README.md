@@ -10,13 +10,7 @@ Things not yet done
 ## Installation
 *In the Tibbar direcory*
 ```
-> gulp
-> npm link
-```
-
-*In your project directory*
-```
-> npm link tibbar
+npm install --save tibbar
 ```
 
 ## Usage

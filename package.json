@@ -6,8 +6,20 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Brendan Myers",
+  "author": "Brendan Myers <brendan@skygrid.io>",
   "license": "MIT",
+  "keywords": [
+    "microservices",
+    "framework",
+    "rabbitmq"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brendan-myers/tibbar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/brendan-myers/tibbar/issues"
+  },
   "dependencies": {
     "amqplib": "^0.5.1"
   },
