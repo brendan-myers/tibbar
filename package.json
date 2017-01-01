@@ -21,7 +21,8 @@
     "url": "https://github.com/brendan-myers/tibbar/issues"
   },
   "dependencies": {
-    "amqplib": "^0.5.1"
+    "amqplib": "^0.5.1",
+    "debug": "^2.6.0"
   },
   "devDependencies": {
     "babel-preset-es2015": "^6.18.0",
