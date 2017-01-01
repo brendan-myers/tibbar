@@ -1,5 +1,11 @@
-const tibbar = require('./lib/tibbar.js');
+const worker = require('./lib/worker.js');
 
-module.exports = function(options) {
-	return new tibbar.default(options);
+exports.worker = function(options) {
+	return new worker.default(options);
+}
+
+const client = require('./lib/client.js');
+
+exports.client = function(options) {
+	return new client.default(options);
 }
