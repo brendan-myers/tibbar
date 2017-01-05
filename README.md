@@ -3,7 +3,7 @@ A very simple RabbitMQ microservice framework.
 
 Things not yet done
 
-- Timeout on requests
+- Passing in options to constructors
 - Better error handling
 - Some code tidying
 - So, so much
@@ -24,13 +24,18 @@ tibbar.use('getDate', () => {
 });
 
 // with parameters
-tibbar.use('double', (payload) => {
+tibbar.use('double', payload => {
   return (payload.value * 2);
 });
 
 // using promises
 tibbar.use('getDatePromise', () => {
-	return Promise.resolve(Date.now());
+  return Promise.resolve(Date.now());
+});
+
+// return nothing
+tibbar.use('writeToConsole', payload => {
+  console.log('Output=>', payload.msg);
 });
 
 tibbar.connect('amqp://localhost');
@@ -38,38 +43,49 @@ tibbar.connect('amqp://localhost');
 
 **Client**
 ```javascript
-const tibbar = require('tibbar').client('amqp://localhost');
+const tibbar = require('tibbar').client();
 
-// no parameters
-tibbar.send('getDate').then(date => {
-  console.log(date);
-});
+tibbar.connect('amqp://localhost').then(() => {
+  return Promise.all([
 
-// with parameters
-tibbar.send('double', { value: 5 }).then(result => {
-  console.log(result);
-});
+    // no parameters
+    tibbar.call('getDate').then(date =>
+      console.log(`getDate result: ${date}`)
+    ),
 
-// using promises
-tibbar.send('getDatePromise').then(date => {
-  console.log(date);
-});
+    // with parameters
+    tibbar.call('double', { value: 5 }).then(result =>
+      console.log(`double result: ${result}`)
+    ),
+
+    // using promises
+    tibbar.call('getDatePromise').then(date =>
+      console.log(`getDatePromise result: ${date}`)
+    ),
+
+    // no response
+    tibbar.cast('writeToConsole', { msg: 'lala' })
+
+  ]);
+})
+.then(() => tibbar.disconnect())
+.catch(() => tibbar.disconnect());
 ```
 
 ### Response format
 **Successful**
 ```
 {
-	type: 'response',
-	body: ...
+  type: 'response',
+  body: ...
 }
 ```
 
 **Exception**
 ```
 {
-	type: 'exception',
-	name: exception name,
-	body: exception message
+  type: 'exception',
+  name: exception name,
+  body: exception message
 }
 ```

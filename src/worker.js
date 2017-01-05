@@ -3,7 +3,7 @@ import assert from 'assert';
 import amqp from 'amqplib';
 
 export default class Worker {
-	constructor() {
+	constructor(options) { // todo assign option values
 		this._queues = {};
 		this._options = {
 			assertQueue: {
@@ -18,81 +18,120 @@ export default class Worker {
 
 
 	use(name, callback) {
-		debug(`Adding queue '${name}'`);
-
 		assert(!this._queues[name], `'${name}'' already exists`);
+
+		debug(`Adding queue '${name}'`);
 
 		this._queues[name] = [];
 		this._queues[name].callback = callback;
+
+		if (this._ch) {
+			this._openQueue(name);
+		}
+	}
+
+
+	disconnect() {
+		if (this._conn) {
+			this._conn.close();
+			delete this._conn;
+		}
 	}
 
 
 	connect(url) {
+		debug(`Connecting ${url}`);
+
 		return amqp.connect(url).then(conn => {
-			for (let q in this._queues) {		// todo use Promise.all
-				const queue = this._queues[q];
+			this._conn = conn;
+			return conn.createChannel();
+		}).then(ch => {
+			this._ch = ch;
 
-				conn.createChannel().then(ch => {
-					ch.assertQueue(q, this._options.assertQueue);
-					ch.prefetch(this._options.prefetch);
+			const promises = [];
 
-					const cb = (msg) => {
-						debug(`[${q}] Receive: ${JSON.stringify(msg)}`);
-
-						if (!msg.properties.replyTo || !msg.properties.correlationId) { // todo should throw an exception
-							debug(`[${q}] Invalid message`);
-							return;
-						}
-
-						try {
-							const res = queue.callback(JSON.parse(msg.content.toString()));
-
-							if ('function' === typeof res.then) {	// if res is a Promise
-								res.then(p => {
-									debug(`[${q}] Respond: ${JSON.stringify(p)}`);
-									sendResponse(p, ch, msg);
-								}).catch(ex => {
-									debug(`[${q}] Exception: ${JSON.stringify(ex)}`);
-									sendResponse(null, ch, msg, ex);
-								});
-							} else {
-								debug(`[${q}] Respond: ${JSON.stringify(res)}`);
-								sendResponse(res, ch, msg);
-							}
-						} catch (ex) {
-							debug(`[${q}] Exception: ${JSON.stringify(ex)}`);
-							sendResponse(null, ch, msg, ex);
-						}
-					};
-
-					ch.consume(q, cb);
-				});
+			for (let q in this._queues) {
+				promises.push(this._openQueue(q));
 			}
+
+			return Promise.all(promises);
 		});
 	}
-}
 
-function sendResponse(payload, channel, msg, exception) {
-	let buffer;
 
-	if (!exception) {
-		buffer = new Buffer(JSON.stringify({
-			type: 'response',
-			body: payload
-		}));
-	} else {
-		buffer = new Buffer(JSON.stringify({
-			type: 'exception',
-			name: exception.constructor.name,
-			body: exception
-		}));
+	_openQueue(q) {
+		debug(`[${q}] Opening`);
+
+		const queue = this._queues[q];
+
+		this._ch.assertQueue(q, this._options.assertQueue);
+		this._ch.prefetch(this._options.prefetch);
+
+		const cb = (msg) => {
+			debug(`[${q}] Receive: ${JSON.stringify(msg)}`);
+
+			try {
+				const res = queue.callback(JSON.parse(msg.content.toString()));
+
+				if (!msg.properties.replyTo || !msg.properties.correlationId) {
+					debug(`[${q}] No response`);
+					this._ch.ack(msg);
+				} else if ('function' === typeof res.then) {	// if res is a Promise
+					res.then(p => {
+						debug(`[${q}] Respond: ${JSON.stringify(p)}`);
+						this._sendResponse(p, msg);
+					}).catch(ex => {
+						debug(`[${q}] Exception: ${JSON.stringify(ex)}`);
+						this._sendResponse(null, msg, ex);
+					});
+				} else {
+					debug(`[${q}] Respond: ${JSON.stringify(res)}`);
+					this._sendResponse(res, msg);
+				}
+			} catch (ex) {
+				debug(`[${q}] Exception: ${JSON.stringify(ex)}`);
+				this._sendResponse(null, msg, ex);
+			}
+		};
+
+		return this._ch.consume(q, cb);
 	}
 
-	channel.sendToQueue(
-		/* channel */ msg.properties.replyTo,
-		/* payload */ buffer,
-		/* options */ { correlationId: msg.properties.correlationId },
-	);
 
-	channel.ack(msg);
-};
+	_closeQueue(q) {
+		debug(`[${q}] Closing`);
+
+		this._ch.deleteQueue(q);
+		delete this._queues[q];
+	}
+
+
+	_sendResponse(payload, msg, exception) {
+		if (!msg) {
+			return;
+		}
+		
+		let buffer;
+
+		if (!exception) {
+			buffer = new Buffer(JSON.stringify({
+				type: 'response',
+				body: payload
+			}));
+		} else {
+			buffer = new Buffer(JSON.stringify({
+				type: 'exception',
+				name: exception.constructor.name,
+				body: exception
+			}));
+		}
+
+		this._ch.sendToQueue(
+			/* queue   */ msg.properties.replyTo,
+			/* payload */ buffer,
+			/* options */ { correlationId: msg.properties.correlationId },
+		);
+
+		this._ch.ack(msg);
+	};
+}

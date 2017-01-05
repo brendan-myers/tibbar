@@ -4,7 +4,7 @@ import assert from 'assert';
 import os from 'os';
 
 export default class Client {
-	constructor(url) {
+	constructor(options) { // todo assign option values
 		this._options = {
 			assertQueue: {
 				exclusive: true,
@@ -12,35 +12,87 @@ export default class Client {
 				autoDelete: false,
 				arguments: null
 			},
-			hostname: os.hostname(),
-			url,
+			url: 'amqp://localhost',
+			timeout: {
+				request: 1000,
+				connect: 1000,
+				disconnect: 1000,
+				disconnectRetry: 250,
+			},
 		}
+
+		this._waiting = {};
 	}
 
 
-  send(endpoint, params, timeout) {  // todo: implement timeout
-  	params = !params ? '{}' : JSON.stringify(params);
-  	debug(`Calling ${endpoint}(${params})`);
-  	
-  	const promise = new Promise((resolve, reject) => {
-  		let conn, ch;
+	connect(url) {
+		return amqp.connect(url || this._options.url).then(conn => {
+	  	this._conn = conn;
+	  	return this._conn.createChannel();
+	  }).then(ch => {
+	  	this._ch = ch;
+	  	return Promise.resolve();
+	  });
+	}
 
-	  	amqp.connect(this._options.url).then(c => {
-	  		conn = c;
-	  		return conn.createChannel();
-	  	}).then(c => {
-	  		ch = c;
-				return ch.assertQueue('', this._options.assertQueue);
-			}).then((q) => {
-				const correlationId = this.generateUuid();
+
+	disconnect(timeout) {
+		debug(`Disconnecting`);
+
+		if (!this._conn) {
+			debug(`Not connected`);
+			throw 'Not connected';
+		}
+
+		this._removeAllWaiting();
+
+		this._conn.close().then(() => {
+			debug('Disconnected');
+		});
+	}
+
+
+	cast(endpoint, params, timeout, options={}) {
+		params = this._formatParams(params);
+
+		debug(`Casting ${endpoint}(${params})`);
+
+		this._send(endpoint, params, options);
+	}
+
+
+	call(endpoint, params, timeout) {
+		params = this._formatParams(params);
+
+		const id = _generateUuid();
+		this._addToWaiting(id, null);
+  	
+  	return new Promise((resolve, reject) => {
+  		debug(`Calling ${endpoint}(${params})`);
+
+  		const timer = setTimeout(() => { 
+  			debug(`[${endpoint}] Timed out`, timeout || this._options.timeout.request);
+	  		
+	  		this._removeFromWaiting(id);
+
+  			reject('Timed out');
+  		}, timeout || this._options.timeout.request);
+
+  		return this._ch.assertQueue('', this._options.assertQueue).then((q) => {
+				this._addToWaiting(id, q);
 
 				const cb = (msg) => {
-					if (msg.properties.correlationId == correlationId) {
-						debug(`Received ${msg.content.toString()}`);
+					if (msg && msg.properties.correlationId == id) {
+						clearTimeout(timer);
 
-						conn.close();
+			  		this._removeFromWaiting(id);
 
 						const res = JSON.parse(msg.content.toString());
+
+						debug(`[${endpoint}] Received`);
+						debug(`[${endpoint}] fields: ${JSON.stringify(msg.fields)}`);
+						debug(`[${endpoint}] properties: ${JSON.stringify(msg.properties)}`);
+						debug(`[${endpoint}] content: ${msg.content.toString()}`);
 
 						if (res.type == 'exception') {
 							reject(res);
@@ -50,26 +102,60 @@ export default class Client {
 					}
 				};
 
-				ch.consume(q.queue, cb);
+				this._ch.consume(q.queue, cb);
 
-				ch.sendToQueue(
+				this._send(
 					endpoint,
-					new Buffer(params),
+					params,
 					{
-						correlationId: correlationId,
-						replyTo: q.queue
+						correlationId: id,
+						replyTo: q.queue,
+						expiration: timeout || this._options.timeout.request
 					}
 				);
 			});
 		});
-
-		return promise;
   }
 
 
-	generateUuid() {
-	  return this._options.hostname +
-	         Math.random().toString() +
-	         Math.random().toString();
+  _send(endpoint, params, options={}) {
+		return this._ch.sendToQueue(
+			endpoint,
+			new Buffer(params),
+			options
+		);
 	}
+
+
+  _addToWaiting(id, q) {
+		this._waiting[id] = q;
+	}
+
+
+	_removeFromWaiting(id) {
+		if (this._ch && this._waiting[id] && this._waiting[id].queue) {
+			debug(`Removing ${id}`);
+			this._ch.deleteQueue(this._waiting[id].queue).catch(() => {}); // see https://github.com/squaremo/amqp.node/issues/250
+		}
+
+		delete this._waiting[id];
+	}
+
+
+	_removeAllWaiting() {
+		for (let key in Object.keys(this._waiting)) {
+			_removeFromWaiting(key);
+		}
+	}
+
+
+	_formatParams(params) {
+		return !params ? '{}' : JSON.stringify(params);
+	}
+}
+
+function _generateUuid() {
+	return os.hostname() +
+		Math.random().toString() +
+		Math.random().toString();
 }
