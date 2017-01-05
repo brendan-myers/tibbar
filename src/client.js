@@ -27,12 +27,12 @@ export default class Client {
 
 	connect(url) {
 		return amqp.connect(url || this._options.url).then(conn => {
-	  	this._conn = conn;
-	  	return this._conn.createChannel();
-	  }).then(ch => {
-	  	this._ch = ch;
-	  	return Promise.resolve();
-	  });
+			this._conn = conn;
+			return this._conn.createChannel();
+		}).then(ch => {
+			this._ch = ch;
+			return Promise.resolve();
+		});
 	}
 
 
@@ -66,26 +66,26 @@ export default class Client {
 
 		const id = _generateUuid();
 		this._addToWaiting(id, null);
-  	
-  	return new Promise((resolve, reject) => {
-  		debug(`Calling ${endpoint}(${params})`);
+		
+		return new Promise((resolve, reject) => {
+			debug(`Calling ${endpoint}(${params})`);
 
-  		const timer = setTimeout(() => { 
-  			debug(`[${endpoint}] Timed out`, timeout || this._options.timeout.request);
-	  		
-	  		this._removeFromWaiting(id);
+			const timer = setTimeout(() => { 
+				debug(`[${endpoint}] Timed out`, timeout || this._options.timeout.request);
+				
+				this._removeFromWaiting(id);
 
-  			reject('Timed out');
-  		}, timeout || this._options.timeout.request);
+				reject('Timed out');
+			}, timeout || this._options.timeout.request);
 
-  		return this._ch.assertQueue('', this._options.assertQueue).then((q) => {
+			return this._ch.assertQueue('', this._options.assertQueue).then((q) => {
 				this._addToWaiting(id, q);
 
 				const cb = (msg) => {
 					if (msg && msg.properties.correlationId == id) {
 						clearTimeout(timer);
 
-			  		this._removeFromWaiting(id);
+						this._removeFromWaiting(id);
 
 						const res = JSON.parse(msg.content.toString());
 
@@ -115,10 +115,10 @@ export default class Client {
 				);
 			});
 		});
-  }
+	}
 
 
-  _send(endpoint, params, options={}) {
+	_send(endpoint, params, options={}) {
 		return this._ch.sendToQueue(
 			endpoint,
 			new Buffer(params),
@@ -127,7 +127,7 @@ export default class Client {
 	}
 
 
-  _addToWaiting(id, q) {
+	_addToWaiting(id, q) {
 		this._waiting[id] = q;
 	}
 
