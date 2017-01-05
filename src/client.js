@@ -12,13 +12,7 @@ export default class Client {
 				autoDelete: false,
 				arguments: null
 			},
-			url: 'amqp://localhost',
-			timeout: {
-				request: 1000,
-				connect: 1000,
-				disconnect: 1000,
-				disconnectRetry: 250,
-			},
+			timeout: 1000,
 		}
 
 		this._waiting = {};
@@ -26,7 +20,7 @@ export default class Client {
 
 
 	connect(url) {
-		return amqp.connect(url || this._options.url).then(conn => {
+		return amqp.connect(url).then(conn => {
 			this._conn = conn;
 			return this._conn.createChannel();
 		}).then(ch => {
@@ -36,7 +30,7 @@ export default class Client {
 	}
 
 
-	disconnect(timeout) {
+	disconnect() {
 		debug(`Disconnecting`);
 
 		if (!this._conn) {
@@ -71,12 +65,12 @@ export default class Client {
 			debug(`Calling ${endpoint}(${params})`);
 
 			const timer = setTimeout(() => { 
-				debug(`[${endpoint}] Timed out`, timeout || this._options.timeout.request);
+				debug(`[${endpoint}] Timed out`, timeout || this._options.timeout);
 				
 				this._removeFromWaiting(id);
 
 				reject('Timed out');
-			}, timeout || this._options.timeout.request);
+			}, timeout || this._options.timeout);
 
 			return this._ch.assertQueue('', this._options.assertQueue).then((q) => {
 				this._addToWaiting(id, q);
@@ -110,7 +104,7 @@ export default class Client {
 					{
 						correlationId: id,
 						replyTo: q.queue,
-						expiration: timeout || this._options.timeout.request
+						expiration: timeout || this._options.timeout
 					}
 				);
 			});

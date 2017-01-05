@@ -68,7 +68,10 @@ export default class Worker {
 		this._ch.prefetch(this._options.prefetch);
 
 		const cb = (msg) => {
-			debug(`[${q}] Receive: ${JSON.stringify(msg)}`);
+			debug(`[${q}] Received`);
+			debug(`[${q}] fields: ${JSON.stringify(msg.fields)}`);
+			debug(`[${q}] properties: ${JSON.stringify(msg.properties)}`);
+			debug(`[${q}] content: ${msg.content.toString()}`);
 
 			try {
 				const res = queue.callback(JSON.parse(msg.content.toString()));
@@ -110,7 +113,7 @@ export default class Worker {
 		if (!msg) {
 			return;
 		}
-		
+
 		let buffer;
 
 		if (!exception) {
