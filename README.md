@@ -38,6 +38,14 @@ tibbar.use('writeToConsole', payload => {
   console.log('Output=>', payload.msg);
 });
 
+// handle additional amqp fields
+tibbar.use('printEverything', (content, properties, fields) => {
+  console.log('content', content);
+  console.log('properties', properties);
+  console.log('fields', fields);
+  return 1;
+});
+
 tibbar.connect('amqp://localhost');
 ```
 
@@ -64,7 +72,10 @@ tibbar.connect('amqp://localhost').then(() => {
     ),
 
     // no response
-    tibbar.cast('writeToConsole', { msg: 'lala' })
+    tibbar.cast('writeToConsole', { msg: 'lala' }),
+
+    // print additional amqp fields
+    tibbar.call('printEverything', 'Example content')
 
   ]);
 })

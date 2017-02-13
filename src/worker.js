@@ -71,19 +71,20 @@ export default class Worker {
 			if (!msg) {
 				return;
 			}
-			
+
 			debug(`[${q}] Received`);
 			debug(`[${q}] fields: ${JSON.stringify(msg.fields)}`);
 			debug(`[${q}] properties: ${JSON.stringify(msg.properties)}`);
 			debug(`[${q}] content: ${msg.content.toString()}`);
 
 			try {
-				const res = queue.callback(JSON.parse(msg.content.toString()));
+				const res = queue.callback(
+					JSON.parse(msg.content.toString()),
+					msg.properties,
+					msg.fields
+				);
 
-				if (!queue.callback) {
-					debug(`[${q}] No callback, no response`);
-					this._ch.ack(msg);
-				} else if (!msg.properties.replyTo || !msg.properties.correlationId) {
+				if (!res || !msg.properties.replyTo || !msg.properties.correlationId) {
 					debug(`[${q}] No response`);
 					this._ch.ack(msg);
 				} else if ('function' === typeof res.then) { // if res is a Promise
