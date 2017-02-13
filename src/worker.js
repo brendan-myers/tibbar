@@ -68,6 +68,10 @@ export default class Worker {
 		this._ch.prefetch(this._options.prefetch);
 
 		const cb = (msg) => {
+			if (!msg) {
+				return;
+			}
+			
 			debug(`[${q}] Received`);
 			debug(`[${q}] fields: ${JSON.stringify(msg.fields)}`);
 			debug(`[${q}] properties: ${JSON.stringify(msg.properties)}`);
@@ -76,10 +80,13 @@ export default class Worker {
 			try {
 				const res = queue.callback(JSON.parse(msg.content.toString()));
 
-				if (!msg.properties.replyTo || !msg.properties.correlationId) {
+				if (!queue.callback) {
+					debug(`[${q}] No callback, no response`);
+					this._ch.ack(msg);
+				} else if (!msg.properties.replyTo || !msg.properties.correlationId) {
 					debug(`[${q}] No response`);
 					this._ch.ack(msg);
-				} else if ('function' === typeof res.then) {	// if res is a Promise
+				} else if ('function' === typeof res.then) { // if res is a Promise
 					res.then(p => {
 						debug(`[${q}] Respond: ${JSON.stringify(p)}`);
 						this._sendResponse(p, msg);
