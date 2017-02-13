@@ -3,18 +3,19 @@ import amqp from 'amqplib';
 import assert from 'assert';
 import os from 'os';
 
-export default class Client {
-	constructor(options) { // todo assign option values
-		this._options = {
-			assertQueue: {
-				exclusive: true,
-				durable: true,
-				autoDelete: false,
-				arguments: null
-			},
-			timeout: 1000,
-		}
+const defaultOptions = {
+	assertQueue: {
+		exclusive: true,
+		durable: true,
+		autoDelete: false,
+		arguments: null
+	},
+	timeout: 1000,
+};
 
+export default class Client {
+	constructor(options) {
+		this._options = Object.assign(defaultOptions, options);
 		this._waiting = {};
 	}
 
@@ -46,23 +47,23 @@ export default class Client {
 	}
 
 
-	cast(endpoint, params, timeout, options={}) {
-		params = this._formatParams(params);
+	cast(endpoint, payload, options={}) {
+		payload = this._formatPayload(payload);
 
-		debug(`Casting ${endpoint}(${params})`);
+		debug(`Casting ${endpoint}(${payload})`);
 
-		this._send(endpoint, params, options);
+		this._send(endpoint, payload, options);
 	}
 
 
-	call(endpoint, params, timeout) {
-		params = this._formatParams(params);
+	call(endpoint, payload, timeout) {
+		payload = this._formatPayload(payload);
 
 		const id = _generateUuid();
 		this._addToWaiting(id, null);
 		
 		return new Promise((resolve, reject) => {
-			debug(`Calling ${endpoint}(${params})`);
+			debug(`Calling ${endpoint}(${payload})`);
 
 			const timer = setTimeout(() => { 
 				debug(`[${endpoint}] Timed out`, timeout || this._options.timeout);
@@ -100,7 +101,7 @@ export default class Client {
 
 				this._send(
 					endpoint,
-					params,
+					payload,
 					{
 						correlationId: id,
 						replyTo: q.queue,
@@ -112,10 +113,10 @@ export default class Client {
 	}
 
 
-	_send(endpoint, params, options={}) {
+	_send(endpoint, payload, options={}) {
 		return this._ch.sendToQueue(
 			endpoint,
-			new Buffer(params),
+			new Buffer(payload),
 			options
 		);
 	}
@@ -143,8 +144,8 @@ export default class Client {
 	}
 
 
-	_formatParams(params) {
-		return !params ? '{}' : JSON.stringify(params);
+	_formatPayload(payload) {
+		return !payload ? '{}' : JSON.stringify(payload);
 	}
 }
 

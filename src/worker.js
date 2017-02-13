@@ -2,18 +2,20 @@ const debug = require('debug')('tibbar:worker');
 import assert from 'assert';
 import amqp from 'amqplib';
 
+const defaultOptions = {
+	assertQueue: {
+		exclusive: false,
+		durable: false,
+		autoDelete: false,
+		arguments: null
+	},
+	prefetch: 1,
+}
+
 export default class Worker {
-	constructor(options) { // todo assign option values
+	constructor(options) {
 		this._queues = {};
-		this._options = {
-			assertQueue: {
-				exclusive: false,
-				durable: false,
-				autoDelete: false,
-				arguments: null
-			},
-			prefetch: 1,
-		};
+		this._options = Object.assign(defaultOptions, options);
 	}
 
 
