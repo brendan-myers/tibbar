@@ -3,7 +3,6 @@ A very simple RabbitMQ microservice framework.
 
 Things not yet done
 
-- Passing in options to constructors
 - Better error handling
 - Some code tidying
 - So, so much
