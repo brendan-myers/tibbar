@@ -1,22 +1,24 @@
 const debug = require('debug')('tibbar:client');
 import amqp from 'amqplib';
 import assert from 'assert';
+import emitter from 'events';
 import os from 'os';
 
 const defaultOptions = {
-	assertQueue: {
+	consume: {
 		exclusive: true,
 		durable: true,
 		autoDelete: false,
-		arguments: null
+		arguments: null,
+		noAck: true,
 	},
 	timeout: 1000,
+	replyTo: 'amq.rabbitmq.reply-to'
 };
 
 export default class Client {
 	constructor(options) {
 		this._options = Object.assign(defaultOptions, options);
-		this._waiting = {};
 	}
 
 
@@ -26,6 +28,15 @@ export default class Client {
 			return this._conn.createChannel();
 		}).then(ch => {
 			this._ch = ch;
+
+			this._ch.emitter = new emitter();
+			this._ch.emitter.setMaxListeners(0);
+			this._ch.consume(
+				this._options.replyTo,
+				msg => this._ch.emitter.emit(msg.properties.correlationId, msg),
+				this._options.consume
+			);
+			
 			return Promise.resolve();
 		});
 	}
@@ -35,11 +46,9 @@ export default class Client {
 		debug(`Disconnecting`);
 
 		if (!this._conn) {
-			debug(`Not connected`);
-			throw 'Not connected';
+			debug('Disconnecting: Not connected');
+			throw 'Disconnecting: Not connected';
 		}
-
-		this._removeAllWaiting();
 
 		this._conn.close().then(() => {
 			debug('Disconnected');
@@ -47,68 +56,69 @@ export default class Client {
 	}
 
 
-	cast(endpoint, payload, options={}) {
+	cast(endpoint, payload) {
+		if (!this._conn) {
+			debug(`Casting ${endpoint}: Not connected`);
+			throw `Casting ${endpoint}: Not connected`;
+		}
+
 		payload = this._formatPayload(payload);
 
 		debug(`Casting ${endpoint}(${payload})`);
 
-		this._send(endpoint, payload, options);
+		this._send(endpoint, payload);
 	}
 
 
 	call(endpoint, payload, timeout) {
+		if (!this._conn) {
+			debug(`Calling ${endpoint}: Not connected`);
+			throw `Calling ${endpoint}: Not connected`;
+		}
+
 		payload = this._formatPayload(payload);
 
 		const id = _generateUuid();
-		this._addToWaiting(id, null);
 		
 		return new Promise((resolve, reject) => {
 			debug(`Calling ${endpoint}(${payload})`);
 
 			const timer = setTimeout(() => { 
 				debug(`[${endpoint}] Timed out`, timeout || this._options.timeout);
-				
-				this._removeFromWaiting(id);
-
+				this._ch.emitter.removeAllListeners(id);
 				reject('Timed out');
 			}, timeout || this._options.timeout);
 
-			return this._ch.assertQueue('', this._options.assertQueue).then((q) => {
-				this._addToWaiting(id, q);
+			const cb = (msg) => {
+				if (msg && msg.properties.correlationId == id) {
+					clearTimeout(timer);
 
-				const cb = (msg) => {
-					if (msg && msg.properties.correlationId == id) {
-						clearTimeout(timer);
+					const res = JSON.parse(msg.content.toString());
 
-						this._removeFromWaiting(id);
+					debug(`[${endpoint}] Received`);
+					debug(`[${endpoint}] fields: ${JSON.stringify(msg.fields)}`);
+					debug(`[${endpoint}] properties: ${JSON.stringify(msg.properties)}`);
+					debug(`[${endpoint}] content: ${msg.content.toString()}`);
 
-						const res = JSON.parse(msg.content.toString());
-
-						debug(`[${endpoint}] Received`);
-						debug(`[${endpoint}] fields: ${JSON.stringify(msg.fields)}`);
-						debug(`[${endpoint}] properties: ${JSON.stringify(msg.properties)}`);
-						debug(`[${endpoint}] content: ${msg.content.toString()}`);
-
-						if (res.type == 'exception') {
-							reject(res);
-						} else {
-							resolve(res.body);
-						}
+					if (res.type == 'exception') {
+						reject(res);
+					} else {
+						resolve(res.body);
 					}
-				};
+				}
+			};
 
-				this._ch.consume(q.queue, cb);
+			this._ch.emitter.once(id, cb);
 
-				this._send(
-					endpoint,
-					payload,
-					{
-						correlationId: id,
-						replyTo: q.queue,
-						expiration: timeout || this._options.timeout
-					}
-				);
-			});
+			this._send(
+				endpoint,
+				payload,
+				{
+					correlationId: id,
+					replyTo: this._options.replyTo,
+					expiration: timeout || this._options.timeout
+				}
+			);
 		});
 	}
 
@@ -119,28 +129,6 @@ export default class Client {
 			new Buffer(payload),
 			options
 		);
-	}
-
-
-	_addToWaiting(id, q) {
-		this._waiting[id] = q;
-	}
-
-
-	_removeFromWaiting(id) {
-		if (this._ch && this._waiting[id] && this._waiting[id].queue) {
-			debug(`Removing ${id}`);
-			this._ch.deleteQueue(this._waiting[id].queue).catch(() => {}); // see https://github.com/squaremo/amqp.node/issues/250
-		}
-
-		delete this._waiting[id];
-	}
-
-
-	_removeAllWaiting() {
-		for (let key in Object.keys(this._waiting)) {
-			_removeFromWaiting(key);
-		}
 	}
 
 

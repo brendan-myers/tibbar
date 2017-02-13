@@ -94,15 +94,15 @@ export default class Worker {
 						debug(`[${q}] Respond: ${JSON.stringify(p)}`);
 						this._sendResponse(p, msg);
 					}).catch(ex => {
-						debug(`[${q}] Exception: ${JSON.stringify(ex)}`);
+						debug(`[${q}] Exception: ${ex}`);
 						this._sendResponse(null, msg, ex);
 					});
 				} else {
-					debug(`[${q}] Respond: ${JSON.stringify(res)}`);
+					debug(`[${q}] Respond: ${res}`);
 					this._sendResponse(res, msg);
 				}
 			} catch (ex) {
-				debug(`[${q}] Exception: ${JSON.stringify(ex)}`);
+				debug(`[${q}] Exception: ${ex}`);
 				this._sendResponse(null, msg, ex);
 			}
 		};
