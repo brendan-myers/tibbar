@@ -22,7 +22,7 @@ export default class Worker {
 
 		debug(`Adding queue '${name}'`);
 
-		this._queues[name] = [];
+		this._queues[name] = {};
 		this._queues[name].callback = callback;
 
 		if (this._ch) {
