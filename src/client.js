@@ -1,8 +1,8 @@
 const debug = require('debug')('tibbar:client');
 import amqp from 'amqplib';
-import assert from 'assert';
 import emitter from 'events';
-import os from 'os';
+import Content from './content';
+import * as Util from './util';
 
 const defaultOptions = {
 	consume: {
@@ -11,6 +11,7 @@ const defaultOptions = {
 		autoDelete: false,
 		arguments: null,
 		noAck: true,
+		consumerTag: 'client'
 	},
 	timeout: 1000,
 	replyTo: 'amq.rabbitmq.reply-to'
@@ -37,6 +38,11 @@ export default class Client {
 				this._options.consume
 			);
 			
+			this._conn.on('close', () => debug('Connection closed'));
+			this._conn.on('error', error => debug('Connection error:', error));
+			this._ch.on('close', () => debug('Channel closed'));
+			this._ch.on('error', error => debug('Channel error:', error));
+
 			return Promise.resolve();
 		});
 	}
@@ -50,9 +56,15 @@ export default class Client {
 			throw 'Disconnecting: Not connected';
 		}
 
-		this._conn.close().then(() => {
-			debug('Disconnected');
-		});
+		this._ch.cancel(this._options.consume.consumerTag).then(() => {
+			return this._ch.close();
+		}).then(() => {
+			return this._conn.close();
+		}).then(() =>
+			debug('Disconnected')
+		).catch(error =>
+			debug('Discconect error:', error.message)
+		);
 	}
 
 
@@ -61,8 +73,6 @@ export default class Client {
 			debug(`Casting ${endpoint}: Not connected`);
 			throw `Casting ${endpoint}: Not connected`;
 		}
-
-		payload = this._formatPayload(payload);
 
 		debug(`Casting ${endpoint}(${payload})`);
 
@@ -76,9 +86,7 @@ export default class Client {
 			throw `Calling ${endpoint}: Not connected`;
 		}
 
-		payload = this._formatPayload(payload);
-
-		const id = _generateUuid();
+		const id = Util.generateUuid();
 		
 		return new Promise((resolve, reject) => {
 			debug(`Calling ${endpoint}(${payload})`);
@@ -93,18 +101,14 @@ export default class Client {
 				if (msg && msg.properties.correlationId == id) {
 					clearTimeout(timer);
 
-					const res = JSON.parse(msg.content.toString());
-
 					debug(`[${endpoint}] Received`);
 					debug(`[${endpoint}] fields: ${JSON.stringify(msg.fields)}`);
 					debug(`[${endpoint}] properties: ${JSON.stringify(msg.properties)}`);
 					debug(`[${endpoint}] content: ${msg.content.toString()}`);
 
-					if (res.type == 'exception') {
-						reject(res);
-					} else {
-						resolve(res.body);
-					}
+					const response = new Content(msg.content);
+
+					resolve(response);
 				}
 			};
 
@@ -126,19 +130,8 @@ export default class Client {
 	_send(endpoint, payload, options={}) {
 		return this._ch.sendToQueue(
 			endpoint,
-			new Buffer(payload),
+			Util.prepareBuffer(payload),
 			options
 		);
 	}
-
-
-	_formatPayload(payload) {
-		return !payload ? '{}' : JSON.stringify(payload);
-	}
-}
-
-function _generateUuid() {
-	return os.hostname() +
-		Math.random().toString() +
-		Math.random().toString();
 }

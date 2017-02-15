@@ -1,6 +1,8 @@
 const debug = require('debug')('tibbar:worker');
 import assert from 'assert';
 import amqp from 'amqplib';
+import Request from './request';
+import Response from './response';
 
 const defaultOptions = {
 	assertQueue: {
@@ -79,32 +81,10 @@ export default class Worker {
 			debug(`[${q}] properties: ${JSON.stringify(msg.properties)}`);
 			debug(`[${q}] content: ${msg.content.toString()}`);
 
-			try {
-				const res = queue.callback(
-					JSON.parse(msg.content.toString()),
-					msg.properties,
-					msg.fields
-				);
+			const request = new Request(msg);
+			const response = new Response(this._ch, msg);
 
-				if (!res || !msg.properties.replyTo || !msg.properties.correlationId) {
-					debug(`[${q}] No response`);
-					this._ch.ack(msg);
-				} else if ('function' === typeof res.then) { // if res is a Promise
-					res.then(p => {
-						debug(`[${q}] Respond: ${JSON.stringify(p)}`);
-						this._sendResponse(p, msg);
-					}).catch(ex => {
-						debug(`[${q}] Exception: ${ex}`);
-						this._sendResponse(null, msg, ex);
-					});
-				} else {
-					debug(`[${q}] Respond: ${res}`);
-					this._sendResponse(res, msg);
-				}
-			} catch (ex) {
-				debug(`[${q}] Exception: ${ex}`);
-				this._sendResponse(null, msg, ex);
-			}
+			queue.callback(request, response);
 		};
 
 		return this._ch.consume(q, cb);
@@ -117,34 +97,4 @@ export default class Worker {
 		this._ch.deleteQueue(q);
 		delete this._queues[q];
 	}
-
-
-	_sendResponse(payload, msg, exception) {
-		if (!msg) {
-			return;
-		}
-
-		let buffer;
-
-		if (!exception) {
-			buffer = new Buffer(JSON.stringify({
-				type: 'response',
-				body: payload
-			}));
-		} else {
-			buffer = new Buffer(JSON.stringify({
-				type: 'exception',
-				name: exception.constructor.name,
-				body: exception
-			}));
-		}
-
-		this._ch.sendToQueue(
-			/* queue   */ msg.properties.replyTo,
-			/* payload */ buffer,
-			/* options */ { correlationId: msg.properties.correlationId },
-		);
-
-		this._ch.ack(msg);
-	};
 }
