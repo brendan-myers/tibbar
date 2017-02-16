@@ -1,101 +1,35 @@
-#Tibbar
-A very simple RabbitMQ microservice framework.
+# Tibbar
+  Minimalist microservice framework for [node](http://nodejs.org) and [RabbitMQ](https://rabbitmq.com).
 
-Things not yet done
+  [![NPM Version][npm-image]][npm-url]
+  [![NPM Downloads][downloads-image]][downloads-url]
 
-- Better error handling
-- Some code tidying
-- So, so much
+```js
+const tibbar = require('tibbar');
+const app = tibbar();
+
+app.accept('/', (req, res) => {
+  res.send('Hello, world!').ack();
+});
+
+app.connect('amqp://localhost').then(() => {
+  return app.call('/');
+}).then(res => {
+  console.log(res.asString());
+  app.disconnect();
+});
+```
 
 ## Installation
-```
-npm install --save tibbar
-```
-
-## Usage
-**Worker**
-```javascript
-const tibbar = require('tibbar').worker();
-
-// no parameters
-tibbar.use('getDate', () => {
-  return Date.now();
-});
-
-// with parameters
-tibbar.use('double', payload => {
-  return (payload.value * 2);
-});
-
-// using promises
-tibbar.use('getDatePromise', () => {
-  return Promise.resolve(Date.now());
-});
-
-// return nothing
-tibbar.use('writeToConsole', payload => {
-  console.log('Output=>', payload.msg);
-});
-
-// handle additional amqp fields
-tibbar.use('printEverything', (content, properties, fields) => {
-  console.log('content', content);
-  console.log('properties', properties);
-  console.log('fields', fields);
-  return 1;
-});
-
-tibbar.connect('amqp://localhost');
+```bash
+npm install tibbar
 ```
 
-**Client**
-```javascript
-const tibbar = require('tibbar').client();
+## License
+  [MIT](LICENSE)
 
-tibbar.connect('amqp://localhost').then(() => {
-  return Promise.all([
 
-    // no parameters
-    tibbar.call('getDate').then(date =>
-      console.log(`getDate result: ${date}`)
-    ),
-
-    // with parameters
-    tibbar.call('double', { value: 5 }).then(result =>
-      console.log(`double result: ${result}`)
-    ),
-
-    // using promises
-    tibbar.call('getDatePromise').then(date =>
-      console.log(`getDatePromise result: ${date}`)
-    ),
-
-    // no response
-    tibbar.cast('writeToConsole', { msg: 'lala' }),
-
-    // print additional amqp fields
-    tibbar.call('printEverything', 'Example content')
-
-  ]);
-})
-.then(() => tibbar.disconnect())
-.catch(() => tibbar.disconnect());
-```
-
-### Response format
-**Successful**
-```
-{
-  type: 'response',
-  body: ...
-}
-```
-
-**Exception**
-```
-{
-  type: 'exception',
-  name: exception name,
-  body: exception message
-}
-```
+[npm-image]: https://img.shields.io/npm/v/tibbar.svg
+[npm-url]: https://npmjs.org/package/tibbar
+[downloads-image]: https://img.shields.io/npm/dm/tibbar.svg
+[downloads-url]: https://npmjs.org/package/tibbar
