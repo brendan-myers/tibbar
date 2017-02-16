@@ -8,6 +8,8 @@ export default class Response {
 
 	ack() {
 		this._ch.ack(this._msg);
+
+		return this;
 	}
 
 	send(payload) {
