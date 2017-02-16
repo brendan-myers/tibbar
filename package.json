@@ -1,6 +1,6 @@
 {
   "name": "tibbar",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "A very simple RabbitMQ framework for Node.js",
   "main": "index.js",
   "scripts": {
