@@ -11,4 +11,4 @@ cache:
   directories:
     - node_modules
 
-script: "gulp test-cov"
+script: "yarn test-ci"
