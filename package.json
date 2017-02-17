@@ -1,7 +1,7 @@
 {
   "name": "tibbar",
   "version": "0.2.0",
-  "description": "A very simple RabbitMQ framework for Node.js",
+  "description": "Minimalist microservice framework for node and RabbitMQ.",
   "main": "index.js",
   "scripts": {
     "test": "gulp && jest --runInBand"
@@ -25,13 +25,15 @@
     "debug": "^2.6.0"
   },
   "devDependencies": {
+    "amqplib-mocks": "^1.1.1",
     "babel-jest": "^18.0.0",
     "babel-polyfill": "^6.20.0",
     "babel-preset-es2015": "^6.18.0",
     "gulp": "^3.9.1",
     "gulp-babel": "^6.1.2",
     "gulp-rimraf": "^0.2.1",
-    "jest": "^18.1.0"
+    "jest": "^18.1.0",
+    "proxyquire": "^1.7.11"
   },
   "jest": {
     "verbose": true,
