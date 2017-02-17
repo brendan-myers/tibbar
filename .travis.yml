@@ -12,3 +12,5 @@ cache:
     - node_modules
 
 script: "gulp && yarn test-ci"
+# had errors installing coveralls with yarn, to be investigated
+after_script: "npm install coveralls && cat ./coverage/lcov.info | coveralls"
