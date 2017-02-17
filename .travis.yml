@@ -1,5 +1,14 @@
 language: node_js
+
 node_js:
     - "6"
+
 git:
   depth: 3
+
+cache:
+  yarn: true
+  directories:
+    - node_modules
+
+script: "gulp test-ci"

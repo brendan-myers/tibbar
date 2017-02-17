@@ -4,7 +4,8 @@
   "description": "Minimalist microservice framework for node and RabbitMQ.",
   "main": "index.js",
   "scripts": {
-    "test": "gulp && jest --runInBand"
+    "test": "gulp && mocha --reporter spec --check-leaks test/",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --reporter dot --check-leaks test/"
   },
   "author": "Brendan Myers <brendan@skygrid.io>",
   "license": "MIT",
@@ -32,17 +33,8 @@
     "gulp": "^3.9.1",
     "gulp-babel": "^6.1.2",
     "gulp-rimraf": "^0.2.1",
-    "jest": "^18.1.0",
+    "istanbul": "^0.4.5",
+    "mocha": "^3.2.0",
     "proxyquire": "^1.7.11"
-  },
-  "jest": {
-    "verbose": true,
-    "collectCoverage": true,
-    "collectCoverageFrom": [
-      "index.js",
-      "lib/*.{js}",
-      "!**/node_modules/**",
-      "!**/src/**"
-    ]
   }
 }
