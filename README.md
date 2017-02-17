@@ -4,6 +4,7 @@
   [![NPM Version][npm-image]][npm-url]
   [![NPM Downloads][downloads-image]][downloads-url]
   [![Build][travis-image]][travis-url]
+  [![Coverage Status][coveralls-image]][coveralls-url]
 
 ```js
 const tibbar = require('tibbar');
@@ -36,3 +37,5 @@ npm install tibbar
 [downloads-url]: https://npmjs.org/package/tibbar
 [travis-image]: https://travis-ci.org/brendan-myers/tibbar.svg?branch=master
 [travis-url]: https://travis-ci.org/brendan-myers/tibbar
+[coveralls-image]: https://coveralls.io/repos/github/brendan-myers/tibbar/badge.svg
+[coveralls-url]: https://coveralls.io/github/brendan-myers/tibbar
