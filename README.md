@@ -3,6 +3,7 @@
 
   [![NPM Version][npm-image]][npm-url]
   [![NPM Downloads][downloads-image]][downloads-url]
+  [![Build][travis-image]][travis-url]
 
 ```js
 const tibbar = require('tibbar');
@@ -33,3 +34,5 @@ npm install tibbar
 [npm-url]: https://npmjs.org/package/tibbar
 [downloads-image]: https://img.shields.io/npm/dm/tibbar.svg
 [downloads-url]: https://npmjs.org/package/tibbar
+[travis-image]: https://travis-ci.org/brendan-myers/tibbar.svg?branch=master
+[travis-url]: https://travis-ci.org/brendan-myers/tibbar
