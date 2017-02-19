@@ -22,14 +22,14 @@ describe('app', () => {
 	it('should create a queue when not connected', function() {
 		const app = new tibbar.default();
 		app.accept('/a');
-		assert.equal(typeof app._worker.queues['/a'], 'object');
+		assert.equal(typeof app._worker._queues['/a'], 'object');
 	});
 
 	it('should create and open a queue when connected', function(done) {
 		const app = new tibbar.default();
 		app.connect('should create and open a queue when connected').then(() => {
 			app.accept('/');
-			assert.equal(typeof app._worker.queues['/'], 'object');
+			assert.equal(typeof app._worker._queues['/'], 'object');
 			done();
 		});
 	});
@@ -38,7 +38,7 @@ describe('app', () => {
 		const app = new tibbar.default();
 		app.accept('/');
 		app.connect('should create a queue when not connected, and open when connected').then(() => {
-			assert.equal(typeof app._worker.queues['/'], 'object');
+			assert.equal(typeof app._worker._queues['/'], 'object');
 			done();
 		});
 	});
@@ -59,25 +59,25 @@ describe('app', () => {
 		assert.throws(function() { app.cast('/') });
 	});
 
-	it('should call an enpoint, and expect a response, when using call', done => {
+	it('should call an endpoint, and expect a response, when using call', done => {
 		const app = new tibbar.default();
 		app.accept('/', (req, res) => {
 			res.ack().send();
 		});
-		app.connect('should call an enpoint, and expect a response, when using call').then(() => {
+		app.connect('should call an endpoint, and expect a response, when using call').then(() => {
 			// --- This is require as amqplib-mocks doesn't support Rabbit's directReplyTo
-			app._worker.ch.assertQueue('amq.rabbitmq.reply-to');
-			app._client.ch.consume(
-				app._options.client.replyTo,
-				msg => app._client.ch.emitter.emit(msg.properties.correlationId, msg),
-				app._options.client.consume
+			app._worker._ch.assertQueue('amq.rabbitmq.reply-to');
+			app._client._ch.consume(
+				app._client._options.replyTo,
+				msg => app._client._ch.emitter.emit(msg.properties.correlationId, msg),
+				app._client._options.consume
 			);
 			// ---
 
 			app.call('/').then(res => {
 				done();
 			});
-		});
+		}).catch(error => console.log(error));
 	});
 
 	it('should throw an error if call is called, and not connected', () => {
