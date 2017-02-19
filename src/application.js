@@ -15,8 +15,8 @@ export default class Application {
 
 		return amqp.connect(url).then(conn => {
 			this._conn = conn;
-			this._worker._conn = conn;
-			this._client._conn = conn;
+			this._worker.connection = conn;
+			this._client.connection = conn;
 
 			const promises = [];
 
@@ -62,5 +62,15 @@ export default class Application {
 
 	call(endpoint, payload, timeout) {
 		return this._client.call(endpoint, payload, timeout);
+	}
+
+
+	get worker() {
+		return this._worker;
+	}
+
+
+	get client() {
+		return this._client;
 	}
 }

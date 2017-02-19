@@ -27,7 +27,7 @@ describe('app', () => {
 
 	it('should create and open a queue when connected', function(done) {
 		const app = new tibbar.default();
-		app.connect('should create and open a queue when connected').then(() => {
+		app.connect('app: should create and open a queue when connected').then(() => {
 			app.accept('/');
 			assert.equal(typeof app._worker._queues['/'], 'object');
 			done();
@@ -37,7 +37,7 @@ describe('app', () => {
 	it('should create a queue when not connected, and open when connected', function(done) {
 		const app = new tibbar.default();
 		app.accept('/');
-		app.connect('should create a queue when not connected, and open when connected').then(() => {
+		app.connect('app: should create a queue when not connected, and open when connected').then(() => {
 			assert.equal(typeof app._worker._queues['/'], 'object');
 			done();
 		});
@@ -49,7 +49,7 @@ describe('app', () => {
 			res.ack();
 			done();
 		});
-		app.connect('should call an endpoint, and not expect a response, when using cast').then(function() {
+		app.connect('app: should call an endpoint, and not expect a response, when using cast').then(function() {
 			app.cast('/');
 		});
 	});
@@ -64,7 +64,7 @@ describe('app', () => {
 		app.accept('/', (req, res) => {
 			res.ack().send();
 		});
-		app.connect('should call an endpoint, and expect a response, when using call').then(() => {
+		app.connect('app: should call an endpoint, and expect a response, when using call').then(() => {
 			// --- This is require as amqplib-mocks doesn't support Rabbit's directReplyTo
 			app._worker._ch.assertQueue('amq.rabbitmq.reply-to');
 			app._client._ch.consume(
@@ -88,7 +88,7 @@ describe('app', () => {
 	it('should call an enpoint, and timeout if no response is sent, when using call', done => {
 		const app = new tibbar.default();
 		app.accept('/');
-		app.connect('should call an enpoint, and timeout if no response is sent, when using call').then(() => {
+		app.connect('app: should call an enpoint, and timeout if no response is sent, when using call').then(() => {
 			app.call('/').then(res => {
 			}).catch(error => {
 				done();

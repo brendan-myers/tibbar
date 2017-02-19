@@ -64,7 +64,7 @@ export default class Worker {
 	_createChannel(connection) {
 		// Yuck, but amqplib-mock doesn't return a promise from createChannel()
 		return new Promise((resolve, reject) => {
-			resolve(connection.createChannel());
+			return resolve(connection.createChannel());
 		}).then(ch => {
 			this._ch = ch;
 			
@@ -145,7 +145,7 @@ export default class Worker {
 		this._queues[name].callback = callback;
 
 		if (this._ch) {
-			this._openQueue(name);
+			return this._openQueue(name);
 		}
 	}
 }
