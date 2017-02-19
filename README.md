@@ -27,6 +27,61 @@ app.connect('amqp://localhost').then(() => {
 npm install tibbar
 ```
 
+## Examples
+
+### Separate client/worker
+```js
+const tibbar = require('tibbar');
+const worker = tibbar().worker;
+const client = tibbar().client;
+
+// Worker
+worker.accept('/', (req, res) => {
+  res.send('Hello, world!').ack();
+});
+worker.connect('amqp://localhost');
+
+// Client
+client.connect('amqp://localhost').then(() => {
+  return client.call('/');
+}).then(res => {
+  console.log(res.asString());
+  client.disconnect();
+  worker.disconnect();
+});
+```
+
+### Middleware
+
+Tibbar supports Express style middleware functions.
+```js
+const tibbar = require('tibbar');
+const worker = tibbar().worker;
+const client = tibbar().client;
+
+// Worker
+const middleware = (res, req, next) => {
+  console.log('Middleware');
+  next();
+};
+
+worker.use(middleware);
+
+worker.accept('/', (req, res) => {
+  res.send('Hello, world!').ack();
+});
+worker.connect('amqp://localhost');
+
+// Client
+client.connect('amqp://localhost').then(() => {
+  return client.call('/');
+}).then(res => {
+  console.log(res.asString());
+  client.disconnect();
+  worker.disconnect();
+});
+```
+
 ## License
   [MIT](LICENSE)
 

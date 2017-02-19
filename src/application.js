@@ -53,6 +53,11 @@ export default class Application {
 	accept(name, callback) {
 		return this._worker.accept(name, callback);
 	}
+
+
+	use(middleware) {
+		return this._worker.use(middleware);
+	}
 	
 
 	cast(endpoint, payload) {

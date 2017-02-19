@@ -54,6 +54,25 @@ describe('app', () => {
 		});
 	});
 
+	it('app: should call an endpoint, run middleware, and not expect a response, when using cast', function(done) {
+		const app = new tibbar.default();
+		let count = 0;
+		app.use((res, req, next) => {
+			count++;
+			next();
+		});
+		app.accept('/', function(req, res) {
+			res.ack();
+			assert.equal(1,count);
+			done();
+		});
+		app.connect('app: should call an endpoint, run middleware, and not expect a response, when using cast').then(function() {
+			app.cast('/');
+		});
+	});
+
+	// should timeout if next() isn't called in middleware
+
 	it('should throw an error if cast is called, and not connected', function() {
 		const app = new tibbar.default();
 		assert.throws(function() { app.cast('/') });

@@ -38,6 +38,19 @@ describe('worker', () => {
 		});
 	});
 
+	it('should execute middleware', function(done) {
+		const app = new worker.default();
+
+		app.use((res,req,next) => {
+			done();
+		});
+
+		app.accept('/');
+		app.connect('worker: should should execute middleware').then(() => {
+			app._execCallback(0);
+		});
+	});
+
 	it('should disconnect nicely', function(done) {
 		const app = new worker.default();
 		app.accept('/');

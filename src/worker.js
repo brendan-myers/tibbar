@@ -17,6 +17,7 @@ const defaultOptions = {
 export default class Worker {
 	constructor(options) {
 		this._queues = {};
+		this._middlewares = [];
 		this._options = Object.assign(defaultOptions, options);
 	}
 
@@ -58,6 +59,25 @@ export default class Worker {
 			delete this._conn;
 			debug('Disconnected');
 		});
+	}
+
+
+	accept(name, callback) {
+		assert(!this._queues[name], `'${name}'' already exists`);
+
+		debug(`Adding queue '${name}'`);
+
+		this._queues[name] = {};
+		this._queues[name].callback = callback;
+
+		if (this._ch) {
+			return this._openQueue(name);
+		}
+	}
+
+
+	use(middleware) {
+		return this._middlewares.push(middleware);
 	}
 
 
@@ -120,7 +140,7 @@ export default class Worker {
 			const request = new Request(msg);
 			const response = new Response(this._ch, msg);
 
-			queue.callback(request, response);
+			this._execCallback(0, request, response, queue.callback);
 		};
 
 		return this._ch.consume(q, cb);
@@ -136,16 +156,15 @@ export default class Worker {
 	}
 
 
-	accept(name, callback) {
-		assert(!this._queues[name], `'${name}'' already exists`);
-
-		debug(`Adding queue '${name}'`);
-
-		this._queues[name] = {};
-		this._queues[name].callback = callback;
-
-		if (this._ch) {
-			return this._openQueue(name);
+	_execCallback(i, request, response, last) {
+		if (i === this._middlewares.length) {
+			return last(request, response);
 		}
+
+		return this._middlewares[i](
+			request,
+			response,
+			() => { this._execCallback(i+1, request, response, last) }
+		);
 	}
 }

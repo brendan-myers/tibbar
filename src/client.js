@@ -65,40 +65,6 @@ export default class Client {
 	}
 
 
-	_createChannel(connection) {
-		// Yuck, but amqplib-mock doesn't return a promise from createChannel()
-		return new Promise((resolve, reject) => {
-			resolve(connection.createChannel());
-		}).then(ch => {
-			this._ch = ch;
-
-			this._ch.emitter = new emitter();
-			this._ch.emitter.setMaxListeners(0);
-			this._ch.consume(
-				this._options.replyTo,
-				msg => this._ch.emitter.emit(msg.properties.correlationId, msg),
-				this._options.consume
-			);
-			
-			this._ch.on('close', () =>
-				debug('Channel closed')
-			);
-			this._ch.on('error', error =>
-				debug('Channel error:', error)
-			);
-
-			return Promise.resolve();
-		});
-	}
-
-
-	_closeChannel() {
-		return this._ch.cancel(this._options.consume.consumerTag).then(() => {
-			return this._ch.close();
-		});
-	}
-
-
 	cast(endpoint, payload) {
 		if (!this._conn) {
 			debug(`Casting ${endpoint}: Not connected`);
@@ -154,6 +120,40 @@ export default class Client {
 					expiration: timeout || this._options.timeout
 				}
 			);
+		});
+	}
+
+
+	_createChannel(connection) {
+		// Yuck, but amqplib-mock doesn't return a promise from createChannel()
+		return new Promise((resolve, reject) => {
+			resolve(connection.createChannel());
+		}).then(ch => {
+			this._ch = ch;
+
+			this._ch.emitter = new emitter();
+			this._ch.emitter.setMaxListeners(0);
+			this._ch.consume(
+				this._options.replyTo,
+				msg => this._ch.emitter.emit(msg.properties.correlationId, msg),
+				this._options.consume
+			);
+			
+			this._ch.on('close', () =>
+				debug('Channel closed')
+			);
+			this._ch.on('error', error =>
+				debug('Channel error:', error)
+			);
+
+			return Promise.resolve();
+		});
+	}
+
+
+	_closeChannel() {
+		return this._ch.cancel(this._options.consume.consumerTag).then(() => {
+			return this._ch.close();
 		});
 	}
 
