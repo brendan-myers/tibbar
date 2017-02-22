@@ -31,7 +31,7 @@ worker.connect('amqp://localhost');
 
 ### Clients
 
-After connecting to a RabbitMQ server, clients can send requests to routes with `call(route, payload, timeout)`, which returns a promise containomg a `result` object.
+After connecting to a RabbitMQ server, clients can send requests to routes with `call(route, payload, timeout)`, which returns a promise containing a `result` object.
 
 Payloads can be buffers, strings, integers, or objects.
 
