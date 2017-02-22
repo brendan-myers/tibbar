@@ -81,7 +81,7 @@ const tibbar = require('tibbar');
 const app = tibbar();
 
 app.accept('/signoff', (req, res) => {
-  res.send('Have a nice day!').acl();
+  res.send('Have a nice day!').ack();
 });
 
 app.accept('/greeting', (req, res1) => {
