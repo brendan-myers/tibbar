@@ -37,10 +37,10 @@ describe('util', function() {
 	it('should return a buffer when prepareBuffer is passed a number', function() {
 		const value = 42;
 		const buffer1 = util.prepareBuffer(value);
-		const buffer2 = Buffer.alloc(4);
-		buffer2.writeInt32BE(value, 0);
+		const buffer2 = Buffer.alloc(8);
+		buffer2.writeDoubleBE(value, 0);
 		assert.deepEqual(buffer1, buffer2);
-		assert.equal(buffer1.readInt32BE(), value);
+		assert.equal(buffer1.readDoubleBE(), value);
 	});
 
 	it('should return a buffer when prepareBuffer is passed an object', function() {

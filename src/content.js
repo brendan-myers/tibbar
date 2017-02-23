@@ -20,7 +20,7 @@ export default class Content {
 
 	asJSON() {
 		debug('.asJSON()');
-		debug(`    returning=${JSON.asString(this.asString())}`);
+		debug(`    returning=${JSON.parse(this.asString())}`);
 		return JSON.parse(this.asString());
 	}
 }
