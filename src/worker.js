@@ -164,7 +164,15 @@ export default class Worker {
 		return this._middlewares[i](
 			request,
 			response,
-			() => { this._execCallback(i+1, request, response, last) }
+			() => { 
+				return new Promise((resolve, reject) => {
+					try {
+						resolve(this._execCallback(i+1, request, response, last));
+					} catch (error) {
+						reject(error);
+					}
+				});
+			}
 		);
 	}
 }
