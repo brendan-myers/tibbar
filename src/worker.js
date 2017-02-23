@@ -19,6 +19,9 @@ export default class Worker {
 		this._queues = {};
 		this._middlewares = [];
 		this._options = Object.assign(defaultOptions, options);
+
+		debug(`.constructor() options=${JSON.stringify(options)}`);
+		debug(`    _options=${JSON.stringify(this._options)}`);
 	}
 
 
@@ -28,16 +31,16 @@ export default class Worker {
 
 
 	connect(url) {
-		debug(`Connecting ${url}`);
+		debug(`.connect() url=${url}`);
 
 		return amqp.connect(url).then(conn => {
 			this._conn = conn;
 
 			this._conn.on('close', () =>
-				debug('Connection closed')
+				debug('event: connection closed')
 			);
 			this._conn.on('error', error =>
-				debug('Connection error:', error)
+				debug('event: connection error:', error)
 			);
 
 			return this._createChannel(this._conn);
@@ -46,10 +49,10 @@ export default class Worker {
 
 
 	disconnect() {
-		debug(`Disconnecting`);
+		debug('.disconnect()');
 
 		if (!this._conn) {
-			debug('Disconnecting: Not connected');
+			debug('    error: Not connected');
 			throw 'Disconnecting: Not connected';
 		}
 
@@ -57,15 +60,15 @@ export default class Worker {
 			return this._conn.close();
 		}).then(() => {
 			delete this._conn;
-			debug('Disconnected');
+			debug('    success: disconnected');
 		});
 	}
 
 
 	accept(name, callback) {
-		assert(!this._queues[name], `'${name}'' already exists`);
+		debug(`.accept() name='${name}', callback='${name}'`);
 
-		debug(`Adding queue '${name}'`);
+		assert(!this._queues[name], `'${name}'' already exists`);
 
 		this._queues[name] = {};
 		this._queues[name].callback = callback;
@@ -77,11 +80,15 @@ export default class Worker {
 
 
 	use(middleware) {
+		debug(`.use() middleware=${middleware}`);
+
 		return this._middlewares.push(middleware);
 	}
 
 
 	_createChannel(connection) {
+		debug('_createChannel()');
+
 		// Yuck, but amqplib-mock doesn't return a promise from createChannel()
 		return new Promise((resolve, reject) => {
 			return resolve(connection.createChannel());
@@ -89,10 +96,10 @@ export default class Worker {
 			this._ch = ch;
 			
 			this._ch.on('close', () =>
-				debug('Channel closed')
+				debug('event: channel closed')
 			);
 			this._ch.on('error', error =>
-				debug('Channel error:', error)
+				debug('event: channel error:', error)
 			);
 
 			const promises = [];
@@ -107,6 +114,8 @@ export default class Worker {
 
 
 	_closeChannel() {
+		debug('_closeChannel()');
+
 		const promises = [];
 
 		for (let q in this._queues) {
@@ -120,7 +129,7 @@ export default class Worker {
 
 
 	_openQueue(q) {
-		debug(`[${q}] Opening`);
+		debug(`._openQueue() q=${q}`);
 
 		const queue = this._queues[q];
 
@@ -132,10 +141,10 @@ export default class Worker {
 				return;
 			}
 
-			debug(`[${q}] Received`);
-			debug(`[${q}] fields: ${JSON.stringify(msg.fields)}`);
-			debug(`[${q}] properties: ${JSON.stringify(msg.properties)}`);
-			debug(`[${q}] content: ${msg.content.toString()}`);
+			debug(`.callback() q=${q}`);
+			debug(`    fields=${JSON.stringify(msg.fields)}`);
+			debug(`    properties=${JSON.stringify(msg.properties)}`);
+			debug(`    content=${msg.content.toString()}`);
 
 			const request = new Request(msg);
 			const response = new Response(this._ch, msg);
@@ -148,7 +157,7 @@ export default class Worker {
 
 
 	_closeQueue(q) {
-		debug(`[${q}] Closing`);
+		debug(`._closeQueue() q=${q}`);
 
 		const promise = this._ch.deleteQueue(q);
 		delete this._queues[q];
@@ -157,10 +166,14 @@ export default class Worker {
 
 
 	_execCallback(i, request, response, last) {
+		debug(`_execCallback() i=${i}`);
+
 		if (i === this._middlewares.length) {
+			debug('    executing callback');
 			return last(request, response);
 		}
 
+		debug('    executing middleware');
 		return this._middlewares[i](
 			request,
 			response,

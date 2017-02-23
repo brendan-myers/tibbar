@@ -5,13 +5,15 @@ import Worker from './worker';
 
 export default class Application {
 	constructor(options) {
+		debug(`.constructor() options=${JSON.stringify(options)}`);
+
 		this._client = new Client(options ? options.client : null);
 		this._worker = new Worker(options ? options.worker : null);
 	}
 
 
 	connect(url) {
-		debug(`Connecting ${url}`);
+		debug(`.connect() url=${url}`);
 
 		return amqp.connect(url).then(conn => {
 			this._conn = conn;
@@ -29,10 +31,10 @@ export default class Application {
 
 
 	disconnect() {
-		debug(`Disconnecting`);
+		debug('.disconnect()');
 
 		if (!this._conn) {
-			debug('Disconnecting: Not connected');
+			debug('    error: Not connected');
 			throw 'Disconnecting: Not connected';
 		}
 
@@ -45,7 +47,7 @@ export default class Application {
 			return this._conn.close();
 		}).then(() => {
 			delete this._conn;
-			debug('Disconnected');
+			debug('    success: disconnected');
 		});
 	}
 

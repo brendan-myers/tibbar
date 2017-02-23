@@ -20,6 +20,9 @@ const defaultOptions = {
 export default class Client {
 	constructor(options) {
 		this._options = Object.assign(defaultOptions, options);
+
+		debug(`.constructor() options=${JSON.stringify(options)}`);
+		debug(`    _options=${JSON.stringify(this._options)}`);
 	}
 
 
@@ -29,28 +32,28 @@ export default class Client {
 
 
 	connect(url) {
-		debug(`Connecting ${url}`);
+		debug(`.connect() url=${url}`);
 
 		return amqp.connect(url).then(conn => {
 			this._conn = conn;
 
 			this._conn.on('close', () =>
-				debug('Connection closed')
+				debug('event: connection closed')
 			);
 			this._conn.on('error', error =>
-				debug('Connection error:', error)
+				debug('event: connection error:', error)
 			);
 
 			return this._createChannel(this._conn);
 		});
-	};
+	}
 
 
 	disconnect() {
-		debug(`Disconnecting`);
+		debug('.disconnect()');
 
 		if (!this._conn) {
-			debug('Disconnecting: Not connected');
+			debug('    error: Not connected');
 			throw 'Disconnecting: Not connected';
 		}
 
@@ -58,50 +61,50 @@ export default class Client {
 			return this._conn.close();
 		}).then(() => {
 			delete this._conn;
-			debug('Disconnected')
-		}).catch(error =>
-			debug('Discconect error:', error.message)
-		);
+			debug('    success: disconnected');
+		}).catch(error => {
+			debug(`    error: ${error.message}`)
+		});
 	}
 
 
-	cast(endpoint, payload) {
+	cast(route, payload, options) {
+		debug(`.cast() route=${route} payload=${JSON.stringify(payload)} options=${options}`);
+
 		if (!this._conn) {
-			debug(`Casting ${endpoint}: Not connected`);
-			throw `Casting ${endpoint}: Not connected`;
+			debug(`    error: Not connected`);
+			throw `Casting ${route}: Not connected`;
 		}
 
-		debug(`Casting ${endpoint}(${payload})`);
-
-		this._send(endpoint, payload);
+		this._send(route, payload, options);
 	}
 
 
-	call(endpoint, payload, timeout) {
+	call(route, payload, timeout) {
+		debug(`.call() route=${route} payload=${JSON.stringify(payload)} timeout=${timeout}`);
+
 		if (!this._conn) {
-			debug(`Calling ${endpoint}: Not connected`);
-			throw `Calling ${endpoint}: Not connected`;
+			debug(`    error: Not connected`);
+			throw `Calling ${route}: Not connected`;
 		}
 
 		const id = Util.generateUuid();
 		
 		return new Promise((resolve, reject) => {
-			debug(`Calling ${endpoint}(${payload})`);
-
 			const timer = setTimeout(() => { 
-				debug(`[${endpoint}] Timed out`, timeout || this._options.timeout);
+				debug(`error: call to ${route} timed out`, timeout || this._options.timeout);
 				this._ch.emitter.removeAllListeners(id);
-				reject('Timed out');
+				reject(`error: call to ${route} timed out`);
 			}, timeout || this._options.timeout);
 
 			const cb = (msg) => {
 				if (msg && msg.properties.correlationId == id) {
 					clearTimeout(timer);
 
-					debug(`[${endpoint}] Received`);
-					debug(`[${endpoint}] fields: ${JSON.stringify(msg.fields)}`);
-					debug(`[${endpoint}] properties: ${JSON.stringify(msg.properties)}`);
-					debug(`[${endpoint}] content: ${msg.content.toString()}`);
+					debug(`.callback() route=${route}`);
+					debug(`    fields=${JSON.stringify(msg.fields)}`);
+					debug(`    properties=${JSON.stringify(msg.properties)}`);
+					debug(`    content=${msg.content.toString()}`);
 
 					const response = new Content(msg.content);
 
@@ -112,7 +115,7 @@ export default class Client {
 			this._ch.emitter.once(id, cb);
 
 			this._send(
-				endpoint,
+				route,
 				payload,
 				{
 					correlationId: id,
@@ -125,6 +128,8 @@ export default class Client {
 
 
 	_createChannel(connection) {
+		debug('._createChannel()');
+
 		// Yuck, but amqplib-mock doesn't return a promise from createChannel()
 		return new Promise((resolve, reject) => {
 			resolve(connection.createChannel());
@@ -140,10 +145,10 @@ export default class Client {
 			);
 			
 			this._ch.on('close', () =>
-				debug('Channel closed')
+				debug('event: channel closed')
 			);
 			this._ch.on('error', error =>
-				debug('Channel error:', error)
+				debug('event: channel error:', error)
 			);
 
 			return Promise.resolve();
@@ -152,15 +157,20 @@ export default class Client {
 
 
 	_closeChannel() {
+		debug('._closeChannel()');
+		debug(`    tag=${this._options.consume.consumerTag}`);
+
 		return this._ch.cancel(this._options.consume.consumerTag).then(() => {
 			return this._ch.close();
 		});
 	}
 
 
-	_send(endpoint, payload, options={}) {
+	_send(route, payload, options={}) {
+		debug(`._send() route=${route} payload=${JSON.stringify(payload)} options=${options}`);
+
 		return this._ch.sendToQueue(
-			endpoint,
+			route,
 			Util.prepareBuffer(payload),
 			options
 		);
