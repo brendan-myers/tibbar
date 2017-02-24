@@ -19,7 +19,7 @@ const defaultOptions = {
 
 
 /**
- *
+ * Client to send requests/messages to workers.
  */
 export default class Client {
 	/**

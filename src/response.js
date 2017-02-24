@@ -2,7 +2,7 @@ const debug = require('debug')('tibbar:response');
 import * as Util from './util';
 
 /**
- * 
+ * Represents a response to send to a request from a client.
  */
 export default class Response {
 	/**
@@ -44,7 +44,7 @@ export default class Response {
 		this._ch.sendToQueue(
 			/* queue   */ this._msg.properties.replyTo,
 			/* payload */ Util.prepareBuffer(payload),
-			/* options */ { correlationId: this._msg.properties.correlationId },
+			/* options */ { correlationId: this._msg.properties.correlationId }
 		);
 
 		return this;
