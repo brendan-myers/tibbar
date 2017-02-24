@@ -24,8 +24,8 @@ describe('content', function() {
 		const value = 42;
 		const buffer = util.prepareBuffer(value);
 		const item = new content(buffer);
-		assert.equal(item.asInt(), value);
-		assert.equal(typeof item.asInt(), 'number');
+		assert.equal(item.asNumber(), value);
+		assert.equal(typeof item.asNumber(), 'number');
 	});
 
 	it('should be able to return a JSON object', function() {
