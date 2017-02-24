@@ -17,7 +17,24 @@ const defaultOptions = {
 	replyTo: 'amq.rabbitmq.reply-to'
 };
 
+
+/**
+ *
+ */
 export default class Client {
+	/**
+	 * @param {Object} options - Default values to use when consuming AMQP queues.
+	 *                           See RabbitMQ docs (http://www.rabbitmq.com/amqp-0-9-1-reference.html) for more details.
+	 * @param {Object} options.consume
+	 * @param {boolean} options.consume.exlusive
+	 * @param {boolean} options.consume.durable
+	 * @param {boolean} options.consume.autoDelete
+	 * @param {boolean} options.consume.arguments
+	 * @param {boolean} options.consume.noAck
+	 * @param {boolean} options.consume.consumerTag
+	 * @param {boolean} options.timeout - Timeout (ms) to wait for a response from call().
+	 * @param {boolean} options.replyTo
+	 */
 	constructor(options) {
 		this._options = Object.assign(defaultOptions, options);
 
@@ -26,11 +43,20 @@ export default class Client {
 	}
 
 
+	/**
+	 * Manually set the amqplib connection that the worker will use.
+	 * @param {Object} conn - An amqplib connection.
+	 */
 	set connection(conn) {
 		this._conn = conn;
 	}
 
 
+	/**
+	 * Open a connection to the RabbitMQ server.
+	 * @param {string} url - Address of the RabbitMQ server to connect to.
+	 * @return {Promise} Promise that resolves when the connection is made and channel is open.
+	 */
 	connect(url) {
 		debug(`.connect() url=${url}`);
 
@@ -49,6 +75,10 @@ export default class Client {
 	}
 
 
+	/**
+	 * Disconnect from the RabbitMQ server.
+	 * @throws {error} Throw error when not connected.
+	 */
 	disconnect() {
 		debug('.disconnect()');
 
@@ -68,6 +98,13 @@ export default class Client {
 	}
 
 
+	/**
+	 * Send a message to the specified queue, but don't receive a response from the worker.
+	 * @param {string} route - Route to send message to.
+	 * @param {Buffer|string|number|object} payload - Message/payload to send to specified route.
+	 * @param {Object} options - aqmp message options. Useful when forwarding requests/messages to another worker.
+	 * @throws {error} Throw error when not connected.
+	 */
 	cast(route, payload, options) {
 		debug(`.cast() route=${route} payload=${JSON.stringify(payload)} options=${options}`);
 
@@ -80,6 +117,15 @@ export default class Client {
 	}
 
 
+	/**
+	 * Send a request to the specified queue.
+	 * @param {string} route - Route to send request to.
+	 * @param {Buffer|string|number|object} payload - Message/payload to send attach to the request.
+	 * @param {number} timeout - Timeout (ms) to wait for a response.
+	 * @throws {error} Throw error when not connected.
+	 * @throws {error} Throw error when request times out.
+	 * @return {Promise<Response>} A promise that resolves to the response from the worker.
+	 */
 	call(route, payload, timeout) {
 		debug(`.call() route=${route} payload=${JSON.stringify(payload)} timeout=${timeout}`);
 

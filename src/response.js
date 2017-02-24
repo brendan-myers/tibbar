@@ -1,7 +1,14 @@
 const debug = require('debug')('tibbar:response');
 import * as Util from './util';
 
+/**
+ * 
+ */
 export default class Response {
+	/**
+	 * @param {Channel} channel - amqplib channel.
+	 * @param {Object} message - Message as received from RabbitMQ.
+	 */
 	constructor(channel, msg) {
 		debug(`.constructor() msg=${JSON.stringify(msg)}`);
 
@@ -9,6 +16,11 @@ export default class Response {
 		this._msg = msg;
 	}
 
+
+	/**
+	 * Acknowledge the received message.
+	 * @return {Response} Returns self.
+	 */
 	ack() {
 		debug('.ack()');
 		debug(`    msg=${JSON.stringify(this._msg)}`);
@@ -17,6 +29,12 @@ export default class Response {
 		return this;
 	}
 
+
+	/**
+	 * Reply to the request originator.
+	 * @param {Buffer|string|number|object} payload - Payload to send to the request originator.
+	 * @return {Response} Returns self.
+	 */
 	send(payload) {
 		debug(`.send() payload=${payload}`);
 		debug(`    queue=${this._msg.properties.replyTo}`);

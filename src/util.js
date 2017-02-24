@@ -1,6 +1,9 @@
 const debug = require('debug')('tibbar:util');
 import os from 'os';
 
+/**
+ * Generate a random uuid.
+ */
 export function generateUuid() {
 	debug('.generateUuid()');
 
@@ -14,6 +17,10 @@ export function generateUuid() {
 }
 
 
+/**
+ * Casts the payload argument to a Buffer instance so that it can be sent as the content of a amqp message.
+ * @param {Buffer|string|number|object} payload - Payload object to convert to a Buffer instance.
+ */
 export function prepareBuffer(payload) {
 	debug(`.prepareBuffer() payload=${payload}`);
 

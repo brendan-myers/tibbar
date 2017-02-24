@@ -14,7 +14,21 @@ const defaultOptions = {
 	prefetch: 1
 };
 
+
+/**
+ * Basic worker service.
+ */
 export default class Worker {
+	/**
+	 * @param {Object} options - Default values to use when creating AMQP channels and queues.
+	 *                           See RabbitMQ docs (http://www.rabbitmq.com/amqp-0-9-1-reference.html) for more details.
+	 * @param {Object} options.assertQueue
+	 * @param {boolean} options.assertQueue.exclusive
+	 * @param {boolean} options.assertQueue.durable
+	 * @param {boolean} options.assertQueue.autoDelete
+	 * @param {boolean} options.assertQueue.arguments
+	 * @param {boolean} options.prefetch
+	 */
 	constructor(options) {
 		this._queues = {};
 		this._middlewares = [];
@@ -25,11 +39,20 @@ export default class Worker {
 	}
 
 
+	/**
+	 * Manually set the amqplib connection that the worker will use.
+	 * @param {Object} conn - An amqplib connection.
+	 */
 	set connection(conn) {
 		this._conn = conn;
 	}
 
 
+	/**
+	 * Open a connection to the RabbitMQ server.
+	 * @param {string} url - Address of the RabbitMQ server to connect to.
+	 * @return {Promise} Promise that resolves when the connection is made, channel is open, and outstanding queues are asserted.
+	 */
 	connect(url) {
 		debug(`.connect() url=${url}`);
 
@@ -48,6 +71,10 @@ export default class Worker {
 	}
 
 
+	/**
+	 * Disconnect from the RabbitMQ server.
+	 * @throws {error} Throw error when not connected.
+	 */
 	disconnect() {
 		debug('.disconnect()');
 
@@ -65,20 +92,30 @@ export default class Worker {
 	}
 
 
-	accept(name, callback) {
-		debug(`.accept() name='${name}', callback='${name}'`);
+	/**
+	 * Bind a callback handler to a route.
+	 * @param {string} route - Route to bind callback handler to.
+	 * @param {function} callback - handler to execute when a request is received on the given route.
+	 */
+	accept(route, callback) {
+		debug(`.accept() route='${route}', callback='${callback}'`);
 
-		assert(!this._queues[name], `'${name}'' already exists`);
+		assert(!this._queues[route], `'${route}'' already exists`);
 
-		this._queues[name] = {};
-		this._queues[name].callback = callback;
+		this._queues[route] = {};
+		this._queues[route].callback = callback;
 
 		if (this._ch) {
-			return this._openQueue(name);
+			return this._openQueue(route);
 		}
 	}
 
 
+	/**
+	 * Set a middleware function that will execute for each request on a bound route before the callback handler is called.
+	 * @param {function} middleware - Middleware function to use.
+	 * @return {number} Count totalling number of middleware functions loaded.
+	 */
 	use(middleware) {
 		debug(`.use() middleware=${middleware}`);
 
